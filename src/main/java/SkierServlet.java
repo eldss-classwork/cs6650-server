@@ -54,8 +54,7 @@ public class SkierServlet extends HttpServlet {
 
       // Echo back the path and anything in the query
       try (PrintWriter out = response.getWriter()) {
-        out.println("Path: " + request.getPathInfo());
-        out.println("Query: " + request.getQueryString());
+        out.println("{\"status\": \"request successful\"}");
       }
     }
   }

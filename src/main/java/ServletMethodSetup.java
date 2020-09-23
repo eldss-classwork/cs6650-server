@@ -40,8 +40,9 @@ class ServletMethodSetup {
   private static boolean isEmptyPath(String urlPathString, HttpServletResponse response)
       throws IOException {
     if (urlPathString == null || urlPathString.isEmpty()) {
-      String errorMsg = "unknown path provided";
-      response.sendError(HttpServletResponse.SC_NOT_FOUND, errorMsg);
+      String errorMsgJSON = "\"status\": \"request failed: unknown path\"";
+      response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+      response.getWriter().write(errorMsgJSON);
       return true;
     }
     return false;
