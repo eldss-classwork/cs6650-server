@@ -10,11 +10,5 @@
         <property name="serverTimezone" value="UTC" />
       </driver-properties>
     </data-source>
-    <data-source source="LOCAL" name="bsds_skiers@localhost" uuid="998e21f9-70c2-4029-bbe8-8ef9ce76fb36">
-      <driver-ref>mariadb</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>org.mariadb.jdbc.Driver</jdbc-driver>
-      <jdbc-url>jdbc:mariadb://localhost:3306/bsds_skiers</jdbc-url>
-    </data-source>
   </component>
 </project>

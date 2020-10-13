@@ -4,7 +4,8 @@ import exceptions.EmptyPathException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.SQLException;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.ServletException;
@@ -55,6 +56,7 @@ public class SkierServlet extends HttpServlet {
         "time",
         "liftID"
     };
+    // Already validated
     String resort = requestJson.getString(keys[0]);
     int day = requestJson.getInt(keys[1]);
     int skier = requestJson.getInt(keys[2]);
@@ -69,7 +71,7 @@ public class SkierServlet extends HttpServlet {
     } catch (SQLException e) {
       response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
       out.println(JsonFormatter.buildError("problem executing SQL: "
-          + e.getMessage()));
+          + e.getMessage()));  // For development
     }
   }
 
@@ -87,35 +89,76 @@ public class SkierServlet extends HttpServlet {
       return;
     }
 
+    // Get query string
+    String queryStr = request.getQueryString();
+    Map<String, String> queries = queryStringToMap(queryStr);
+
     // Validate path
-    if (!isUrlValidGET(pathParts)) {
+    if (!isUrlValidGET(pathParts, queries)) {
       // Invalid path
       response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
       response.getWriter().println(JsonFormatter.buildError("invalid request"));
       return;
     }
 
-    // Echo back the path and anything in the query
+    // Process the request
     PrintWriter out = response.getWriter();
     try {
-      // TODO: Do actual gets for the get paths
-      // Get the data
-      List<JSONable> list = dbConn.getAllResorts();
-      // Return the data
-      response.setStatus(HttpServletResponse.SC_OK);
-      out.println(JsonFormatter.buildArray(list));
+      String pathIdVertWithDays = "days";
+      String pathIdVertNoDays = "vertical";
+      int pathIdIndex = 2;
+
+      // /skiers/{resortID}/days/{dayID}/skiers/{skierID}
+      if (pathParts[pathIdIndex].equals(pathIdVertWithDays)) {
+        // Get the data
+        String resort = pathParts[1];
+        int day = Integer.parseInt(pathParts[3]);
+        int skierID = Integer.parseInt(pathParts[5]);
+        JSONable vertObj = dbConn.getSkierVertByResortAndDay(skierID, day, resort);
+
+        // Return the data
+        response.setStatus(HttpServletResponse.SC_OK);
+        if (vertObj == null) {
+          out.println("{}");
+        } else {
+          out.println(vertObj.fieldsToJSON());
+        }
+
+        // /skiers/{skierID}/vertical?resort={resortID}
+      } else if (pathParts[pathIdIndex].equals(pathIdVertNoDays)) {
+        // Get the data
+        String resort = queries.get("resort");
+        int skierID = Integer.parseInt(pathParts[1]);
+        JSONable vertObj = dbConn.getSkierVertByResort(skierID, resort);
+
+        // Return the data
+        response.setStatus(HttpServletResponse.SC_OK);
+        if (vertObj == null) {
+          out.println("{}");
+        } else {
+          out.println(vertObj.fieldsToJSON());
+        }
+
+      } else {
+        // Something unexpected happened
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        out.println(JsonFormatter.buildError("unexpected path provided"));
+      }
+
     } catch (SQLException e) {
       response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
       out.println(JsonFormatter.buildError("problem executing SQL "
           + e.getMessage()));
+    } catch (NumberFormatException e) {
+      response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+      out.println(JsonFormatter.buildError("problem parsing path parameters "
+          + e.getMessage()));
     }
   }
 
-  /*
-      Validation Methods
-      Info on paths found at
-      https://app.swaggerhub.com/apis/cloud-perf/SkiDataAPI/1.13#/
-   */
+  // Validation methods below
+  // Info on paths found at
+  // https://app.swaggerhub.com/apis/cloud-perf/SkiDataAPI/1.13#/
 
   /**
    * Checks if a GET request path is valid.
@@ -123,7 +166,7 @@ public class SkierServlet extends HttpServlet {
    * @param pathParts An array of path parts
    * @return true if valid, otherwise false
    */
-  private boolean isUrlValidGET(String[] pathParts) {
+  private boolean isUrlValidGET(String[] pathParts, Map<String, String> queries) {
     // Example pathParts
     // urlPath  = "/1/days/1/skier/123"
     // pathParts = [, 1, days, 1, skier, 123]
@@ -142,15 +185,26 @@ public class SkierServlet extends HttpServlet {
     // Check each path
     try {
       if (len == verticalByResortLen) {
+        // Ensure skierID is a number
         String skierID = pathParts[1];
         Integer.parseInt(skierID);
-        return pathParts[len - 1].equals("vertical");
+
+        // Ensure end of path is "vertical"
+        boolean pathCondition = pathParts[len - 1].equals("vertical");
+
+        // Ensure query given with "resort"
+        boolean queryCondition = queries.containsKey("resort");
+
+        return pathCondition && queryCondition;
 
       } else if (len == verticalByDay) {
+        // Ensure day and skierID are ints
         String day = pathParts[3];
         String skierID = pathParts[5];
         Integer.parseInt(day);
         Integer.parseInt(skierID);
+
+        // Ensure path identifiers are in the right place
         return pathParts[2].equals("days") && pathParts[4].equals("skiers");
 
       } else {
@@ -158,6 +212,7 @@ public class SkierServlet extends HttpServlet {
         return false;
       }
     } catch (NumberFormatException e) {
+      // Something wasn't a valid number
       return false;
     }
   }
@@ -210,5 +265,25 @@ public class SkierServlet extends HttpServlet {
     }
 
     return pathIsValid && bodyIsValid;
+  }
+
+  /**
+   * Turns a query string into a map of key, value pairs. All keys and values are left as Strings.
+   *
+   * @param queryStr the string returned by request.getQueryString()
+   * @return A map of key value pairs provided by the query
+   */
+  private Map<String, String> queryStringToMap(String queryStr) {
+    if (queryStr == null) {
+      return new HashMap<>();
+    }
+
+    Map<String, String> result = new HashMap<>();
+    String[] queries = queryStr.split("&");
+    for (String query : queries) {
+      String[] keyVal = query.split("=");
+      result.put(keyVal[0], keyVal[1]);
+    }
+    return result;
   }
 }
