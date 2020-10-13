@@ -1,3 +1,5 @@
+package exceptions;
+
 /**
  * Simple exception for empty path strings.
  */
