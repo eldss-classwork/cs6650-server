@@ -69,7 +69,7 @@ public class SkierServlet extends HttpServlet {
       dbConn.postLiftRide(resort, day, skier, time, lift);
       response.setStatus(HttpServletResponse.SC_CREATED);
     } catch (SQLException e) {
-      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
       out.println(JsonFormatter.buildError("problem executing SQL: "
           + e.getMessage()));  // For development
     }
@@ -146,7 +146,7 @@ public class SkierServlet extends HttpServlet {
       }
 
     } catch (SQLException e) {
-      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
       out.println(JsonFormatter.buildError("problem executing SQL "
           + e.getMessage()));
     } catch (NumberFormatException e) {
