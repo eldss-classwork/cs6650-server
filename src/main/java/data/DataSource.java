@@ -13,14 +13,14 @@ public class DataSource {
 
   static {
     Map<String, String> env = System.getenv();
-    String dbUrlLocal = "jdbc:mysql://" + env.get("DB_URL");
+    String dbUrl = "jdbc:mysql://" + env.get("DB_URL");
     String userName = env.get("DB_USER");
     String password = env.get("DB_PASS");
     int cores = Runtime.getRuntime().availableProcessors();
     int poolSizeLocal =
         cores * 2;  // simplified from rule of thumb provided on hikari github README
 
-    config.setJdbcUrl(dbUrlLocal);
+    config.setJdbcUrl(dbUrl);
     config.setDriverClassName("com.mysql.cj.jdbc.Driver");
     config.setUsername(userName);
     config.setPassword(password);
