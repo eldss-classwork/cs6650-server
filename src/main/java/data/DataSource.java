@@ -18,7 +18,7 @@ public class DataSource {
     String password = env.get("DB_PASS");
     int cores = Runtime.getRuntime().availableProcessors();
     int poolSizeLocal =
-        cores * 2;  // simplified from rule of thumb provided on hikari github README
+        (cores * 2) + 1;  // simplified from rule of thumb provided on hikari github README
 
     config.setJdbcUrl(dbUrl);
     config.setDriverClassName("com.mysql.cj.jdbc.Driver");
